@@ -51,7 +51,6 @@ MONGO_URI=
 JWT_SECRET=
 PORT=
 ```
-*(Add your own values)*
 
 **3. Run the server**
 ```bash
