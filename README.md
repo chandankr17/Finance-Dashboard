@@ -6,9 +6,9 @@ A role-based finance data processing and access control backend built with Node.
 
 ## Tech Stack
 
-- **Node.js** + **Express** — server and routing
-- **MongoDB** + **Mongoose** — database and models
-- **JWT** — token-based authentication
+- **Node.js** + **Express**
+- **MongoDB** + **Mongoose**
+- **JWT** — authentication
 - **bcryptjs** — password hashing
 - **dotenv** — environment configuration
 
@@ -41,319 +41,115 @@ finance-dashboard/
 ## Setup
 
 **1. Install dependencies**
-
 ```bash
 npm install
 ```
 
-**2. Create `.env` file in the root**
-
+**2. Create `.env` file in root**
 ```env
-MONGO_URI=mongodb://127.0.0.1:27017/finance
-JWT_SECRET=supersecretkey123
-PORT=3000
+MONGO_URI=
+JWT_SECRET=
+PORT=
 ```
+*(Add your own values)*
 
 **3. Run the server**
-
 ```bash
 npm run dev
 ```
 
 ---
 
-## `/auth/register` Endpoint
+## API Reference
 
-### Description
+### Auth
 
-Registers a new user with a name, email, password, and role.
-
-### HTTP Method
-
-`POST`
-
-### Request Body
-
-- `name` (string, required): User's full name.
-- `email` (string, required): Must be a valid email address.
-- `password` (string, required): Minimum 6 characters.
-- `role` (string, optional): One of `viewer`, `analyst`, `admin`. Defaults to `viewer`.
-
-### Example Response
-
-```json
-{
-  "message": "User created",
-  "id": "64f1a2b3c4d5e6f7a8b9c0d1"
-}
-```
+| Method | Endpoint | Access | Description |
+|--------|----------|--------|-------------|
+| POST | `/auth/register` | Public | Register a new user |
+| POST | `/auth/login` | Public | Login and get JWT token |
 
 ---
 
-## `/auth/login` Endpoint
+### Users
 
-### Description
+| Method | Endpoint | Access | Description |
+|--------|----------|--------|-------------|
+| GET | `/users` | Admin | List all users |
+| GET | `/users/:id` | Self or Admin | Get user by ID |
+| PATCH | `/users/:id` | Admin | Update name, role, status, password |
+| DELETE | `/users/:id` | Admin | Delete a user |
 
-Authenticates a user with email and password. Returns a JWT token on success.
+---
 
-### HTTP Method
+### Records
 
-`POST`
+| Method | Endpoint | Access | Description |
+|--------|----------|--------|-------------|
+| GET | `/records` | All roles | List records with filters |
+| GET | `/records/:id` | All roles | Get a single record |
+| POST | `/records` | Admin | Create a record |
+| PATCH | `/records/:id` | Admin | Update a record |
+| DELETE | `/records/:id` | Admin | Soft delete a record |
 
-### Request Body
+**Query filters:** `?type=income` `?category=salary` `?from=2024-01-01` `?to=2024-12-31` `?page=1` `?limit=20`
 
-- `email` (string, required): User's email address.
-- `password` (string, required): User's password.
+---
 
-### Example Response
+### Dashboard
 
+| Method | Endpoint | Access | Description |
+|--------|----------|--------|-------------|
+| GET | `/dashboard/summary` | All roles | Total income, expenses, net balance |
+| GET | `/dashboard/by-category` | Analyst + Admin | Totals grouped by category |
+| GET | `/dashboard/monthly` | Analyst + Admin | Month by month trend (last 12 months) |
+| GET | `/dashboard/recent` | All roles | Latest transactions |
+
+---
+
+## Example Responses
+
+**POST /auth/register**
 ```json
 {
-  "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "message": "User created",
+  "id": "user_id"
+}
+```
+
+**POST /auth/login**
+```json
+{
+  "token": "jwt_token",
   "user": {
-    "id": "64f1a2b3c4d5e6f7a8b9c0d1",
-    "name": "Admin",
-    "email": "admin@finance.com",
+    "id": "user_id",
+    "name": "User",
+    "email": "user@email.com",
     "role": "admin"
   }
 }
 ```
 
----
-
-## `/users` Endpoint
-
-### Description
-
-Returns a list of all registered users.
-
-### HTTP Method
-
-`GET`
-
-### Authentication
-
-Requires a valid JWT token. Admin only.
-
-`Authorization: Bearer <token>`
-
-### Example Response
-
-```json
-[
-  {
-    "_id": "64f1a2b3c4d5e6f7a8b9c0d1",
-    "name": "Admin",
-    "email": "admin@finance.com",
-    "role": "admin",
-    "status": "active"
-  }
-]
-```
-
----
-
-## `/users/:id` Endpoint (PATCH)
-
-### Description
-
-Updates a user's name, role, status, or password.
-
-### HTTP Method
-
-`PATCH`
-
-### Authentication
-
-Requires a valid JWT token. Admin only.
-
-### Request Body (all fields optional)
-
-- `name` (string): New name.
-- `role` (string): One of `viewer`, `analyst`, `admin`.
-- `status` (string): `active` or `inactive`.
-- `password` (string): New password (minimum 6 characters).
-
-### Example Response
-
-```json
-{
-  "message": "User updated"
-}
-```
-
----
-
-## `/users/:id` Endpoint (DELETE)
-
-### Description
-
-Deletes a user by ID. Admin cannot delete themselves.
-
-### HTTP Method
-
-`DELETE`
-
-### Authentication
-
-Requires a valid JWT token. Admin only.
-
-### Example Response
-
-```json
-{
-  "message": "User deleted"
-}
-```
-
----
-
-## `/records` Endpoint (GET)
-
-### Description
-
-Returns a paginated list of financial records. Supports filtering by type, category, and date range.
-
-### HTTP Method
-
-`GET`
-
-### Authentication
-
-Requires a valid JWT token. All roles.
-
-### Query Parameters
-
-- `type` (string, optional): `income` or `expense`.
-- `category` (string, optional): Filter by category name.
-- `from` (string, optional): Start date in `YYYY-MM-DD` format.
-- `to` (string, optional): End date in `YYYY-MM-DD` format.
-- `page` (number, optional): Page number. Default is `1`.
-- `limit` (number, optional): Records per page. Default is `20`.
-
-### Example Response
-
+**GET /records**
 ```json
 {
   "page": 1,
   "limit": 20,
   "data": [
     {
-      "_id": "64f1a2b3c4d5e6f7a8b9c0d2",
+      "_id": "record_id",
       "amount": 5000,
       "type": "income",
       "category": "Salary",
       "date": "2024-01-01",
       "notes": "January salary",
-      "createdBy": { "name": "Admin" }
+      "createdBy": { "name": "User" }
     }
   ]
 }
 ```
 
----
-
-## `/records` Endpoint (POST)
-
-### Description
-
-Creates a new financial record.
-
-### HTTP Method
-
-`POST`
-
-### Authentication
-
-Requires a valid JWT token. Admin only.
-
-### Request Body
-
-- `amount` (number, required): The transaction amount.
-- `type` (string, required): `income` or `expense`.
-- `category` (string, required): Category name e.g. Salary, Rent.
-- `date` (string, required): Date in `YYYY-MM-DD` format.
-- `notes` (string, optional): Additional description.
-
-### Example Response
-
-```json
-{
-  "message": "Record created",
-  "id": "64f1a2b3c4d5e6f7a8b9c0d2"
-}
-```
-
----
-
-## `/records/:id` Endpoint (PATCH)
-
-### Description
-
-Updates an existing financial record by ID.
-
-### HTTP Method
-
-`PATCH`
-
-### Authentication
-
-Requires a valid JWT token. Admin only.
-
-### Request Body (all fields optional)
-
-- `amount`, `type`, `category`, `date`, `notes`
-
-### Example Response
-
-```json
-{
-  "message": "Record updated"
-}
-```
-
----
-
-## `/records/:id` Endpoint (DELETE)
-
-### Description
-
-Soft deletes a record by setting a `deletedAt` timestamp. Data is never permanently removed.
-
-### HTTP Method
-
-`DELETE`
-
-### Authentication
-
-Requires a valid JWT token. Admin only.
-
-### Example Response
-
-```json
-{
-  "message": "Record deleted"
-}
-```
-
----
-
-## `/dashboard/summary` Endpoint
-
-### Description
-
-Returns total income, total expenses, net balance, and total record count.
-
-### HTTP Method
-
-`GET`
-
-### Authentication
-
-Requires a valid JWT token. All roles.
-
-### Example Response
-
+**GET /dashboard/summary**
 ```json
 {
   "total_income": 15000,
@@ -361,91 +157,6 @@ Requires a valid JWT token. All roles.
   "net_balance": 9000,
   "total_records": 10
 }
-```
-
----
-
-## `/dashboard/by-category` Endpoint
-
-### Description
-
-Returns income and expense totals grouped by category.
-
-### HTTP Method
-
-`GET`
-
-### Authentication
-
-Requires a valid JWT token. Analyst and Admin only.
-
-### Example Response
-
-```json
-[
-  { "_id": { "category": "Salary", "type": "income" }, "total": 10000, "count": 2 },
-  { "_id": { "category": "Rent", "type": "expense" }, "total": 2400, "count": 2 }
-]
-```
-
----
-
-## `/dashboard/monthly` Endpoint
-
-### Description
-
-Returns month-by-month income and expense breakdown for the last 12 months.
-
-### HTTP Method
-
-`GET`
-
-### Authentication
-
-Requires a valid JWT token. Analyst and Admin only.
-
-### Example Response
-
-```json
-[
-  { "_id": "2024-02", "income": 5450, "expenses": 1400 },
-  { "_id": "2024-01", "income": 5800, "expenses": 1650 }
-]
-```
-
----
-
-## `/dashboard/recent` Endpoint
-
-### Description
-
-Returns the most recent financial transactions.
-
-### HTTP Method
-
-`GET`
-
-### Authentication
-
-Requires a valid JWT token. All roles.
-
-### Query Parameters
-
-- `limit` (number, optional): Number of records to return. Max 20. Default is 5.
-
-### Example Response
-
-```json
-[
-  {
-    "_id": "64f1a2b3c4d5e6f7a8b9c0d2",
-    "amount": 5000,
-    "type": "income",
-    "category": "Salary",
-    "date": "2024-01-01",
-    "createdBy": { "name": "Admin" }
-  }
-]
 ```
 
 ---
@@ -466,31 +177,26 @@ Requires a valid JWT token. All roles.
 
 ## Error Responses
 
-All endpoints return consistent error responses:
-
 ```json
 { "error": "Error message here" }
 ```
 
-Common status codes:
-
-- `200` — Success
-- `201` — Created
-- `400` — Bad request / missing fields
-- `401` — Unauthorized / invalid token
-- `403` — Forbidden / insufficient role
-- `404` — Not found
-- `409` — Conflict (e.g. email already in use)
-- `500` — Internal server error
+| Code | Meaning |
+|------|---------|
+| 400 | Bad request / missing fields |
+| 401 | Invalid or missing token |
+| 403 | Insufficient role |
+| 404 | Not found |
+| 409 | Email already in use |
+| 500 | Server error |
 
 ---
 
 ## Assumptions & Design Decisions
 
-- MongoDB automatically creates the `finance` database on first connection. No manual setup needed.
-- Passwords are hashed with bcrypt before storing. Never stored as plain text.
-- Records use soft delete — a `deletedAt` timestamp is set instead of permanently removing data.
-- JWT tokens expire in 7 days. Change `JWT_SECRET` in production.
-- Registration is open for demo purposes. In production, only admins should be able to create users.
-- Roles are simple strings on the user document — no separate permissions table needed for this scope.
-- Pagination is built into `GET /records` using `page` and `limit` query params.
+- MongoDB creates the `finance` database automatically on first connection.
+- Passwords are hashed with bcrypt — never stored as plain text.
+- Records use soft delete — `deletedAt` is set instead of permanent removal.
+- JWT tokens expire in 7 days.
+- Registration is open for demo purposes. In production only admins should create users.
+- Roles are kept as simple strings — no separate permissions table needed for this scope.
